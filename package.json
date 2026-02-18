@@ -1,5 +1,5 @@
 {
-  "name": "mobilia-ai",
+  "name": "homevia",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "next": "^15.0.0",
+    "next-auth": "^4.24.13",
     "openai": "^4.77.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

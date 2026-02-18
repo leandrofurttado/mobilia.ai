@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 
 type Creation = {
@@ -8,7 +9,7 @@ type Creation = {
   items?: string[];
 };
 
-const STORAGE_KEY = "mobilia-creations";
+const STORAGE_KEY = "homevia-creations";
 
 function loadCreations(): Creation[] {
   if (typeof window === "undefined") return [];
@@ -22,31 +23,8 @@ function loadCreations(): Creation[] {
   }
 }
 
-function saveCreations(creations: Creation[]) {
-  if (typeof window === "undefined") return;
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(creations));
-  } catch {
-    // ignore
-  }
-}
-
-function fileToDataUrl(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = () => reject(reader.error);
-    reader.readAsDataURL(file);
-  });
-}
-
 export default function Home() {
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [creations, setCreations] = useState<Creation[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [dragActive, setDragActive] = useState(false);
   const [viewerImage, setViewerImage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -66,199 +44,87 @@ export default function Home() {
     };
   }, [viewerImage]);
 
-  const addCreation = useCallback((imageBase64: string, items?: string[]) => {
-    const creation: Creation = {
-      imageBase64,
-      createdAt: Date.now(),
-      ...(items?.length ? { items } : {}),
-    };
-    setCreations((prev) => {
-      const next = [creation, ...prev];
-      saveCreations(next);
-      return next;
-    });
-  }, []);
-
-  const handleFile = useCallback((file: File | null) => {
-    setPreviewUrl(null);
-    setSelectedFile(file);
-    setError(null);
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Selecione apenas arquivos de imagem (JPEG, PNG, WebP).");
-      setSelectedFile(null);
-      return;
-    }
-    fileToDataUrl(file).then(setPreviewUrl).catch(() => {
-      setError("Não foi possível ler a imagem.");
-      setSelectedFile(null);
-    });
-  }, []);
-
-  const onDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      setDragActive(false);
-      const file = e.dataTransfer.files?.[0];
-      if (file) handleFile(file);
-    },
-    [handleFile]
-  );
-
-  const onDragOver = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(true);
-  }, []);
-
-  const onDragLeave = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    setDragActive(false);
-  }, []);
-
-  const onInputChange = useCallback(
-    (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0] ?? null;
-      handleFile(file);
-      e.target.value = "";
-    },
-    [handleFile]
-  );
-
-  const onCreate = useCallback(async () => {
-    if (!previewUrl || !selectedFile) return;
-    setLoading(true);
-    setError(null);
-    try {
-      const res = await fetch("/api/transform", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageBase64: previewUrl }),
-      });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(data?.error || "Falha ao transformar a imagem.");
-        return;
-      }
-      if (data?.imageBase64) {
-        const dataUrl = `data:image/png;base64,${data.imageBase64}`;
-        addCreation(dataUrl, data.items);
-        setSelectedFile(null);
-        setPreviewUrl(null);
-      } else {
-        setError("Resposta inválida da API.");
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Erro de conexão.");
-    } finally {
-      setLoading(false);
-    }
-  }, [previewUrl, selectedFile, addCreation]);
-
   return (
-    <main className="min-h-screen bg-neutral-50 text-neutral-900">
-      <div className="mx-auto max-w-4xl px-4 py-10">
-        <h1 className="mb-2 text-3xl font-bold tracking-tight">mobilia.ai</h1>
-        <p className="mb-8 text-neutral-600">
-          Envie uma foto de um cômodo e receba uma versão moderna e aconchegante.
-        </p>
-
-        <section className="mb-10">
-          <div
-            onDrop={onDrop}
-            onDragOver={onDragOver}
-            onDragLeave={onDragLeave}
-            className={`relative rounded-xl border-2 border-dashed p-8 text-center transition-colors ${
-              dragActive ? "border-emerald-500 bg-emerald-50" : "border-neutral-300 bg-white"
-            }`}
+    <>
+      <header className="border-b border-slate-200/80 bg-white/80 backdrop-blur-md sticky top-0 z-30">
+        <div className="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
+          <span className="text-xl font-semibold tracking-tight text-slate-900">
+            Homevia
+          </span>
+          <Link
+            href="/criar"
+            className="rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
           >
-            <input
-              type="file"
-              accept="image/*"
-              onChange={onInputChange}
-              className="absolute inset-0 cursor-pointer opacity-0"
-              disabled={loading}
-            />
-            {previewUrl ? (
-              <div className="flex flex-col items-center gap-4">
-                <button
-                  type="button"
-                  onClick={() => setViewerImage(previewUrl)}
-                  className="focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 rounded-lg"
-                >
-                  <img
-                    src={previewUrl}
-                    alt="Preview"
-                    className="max-h-64 rounded-lg object-contain shadow-md cursor-zoom-in hover:opacity-90 transition-opacity"
-                  />
-                </button>
-                <p className="text-sm text-neutral-500">
-                  Imagem selecionada. Clique em &quot;Criar&quot; para transformar.
-                </p>
-              </div>
-            ) : (
-              <p className="text-neutral-500">
-                Arraste uma imagem aqui ou clique para escolher um arquivo
-              </p>
-            )}
-          </div>
+            Nova criação
+          </Link>
+        </div>
+      </header>
 
-          {error && (
-            <p className="mt-3 text-sm text-red-600" role="alert">
-              {error}
-            </p>
-          )}
-
-          <div className="mt-4 flex justify-end">
-            <button
-              type="button"
-              onClick={onCreate}
-              disabled={!previewUrl || loading}
-              className="rounded-lg bg-emerald-600 px-6 py-2.5 font-medium text-white transition-colors hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-              {loading ? "Criando…" : "Criar"}
-            </button>
-          </div>
+      <main className="mx-auto max-w-5xl px-4 py-8 md:py-12">
+        <section className="mb-10 text-center md:mb-14">
+          <h1 className="text-3xl font-bold tracking-tight text-slate-900 md:text-4xl">
+            Suas criações
+          </h1>
+          <p className="mt-2 text-slate-600 md:text-lg">
+            Cômodos transformados com IA. Toque em uma imagem para ampliar.
+          </p>
         </section>
 
         <section>
-          <h2 className="mb-4 text-xl font-semibold">Minhas criações</h2>
           {creations.length === 0 ? (
-            <p className="rounded-xl border border-neutral-200 bg-white p-8 text-center text-neutral-500">
-              Nenhuma criação ainda. Envie uma foto e clique em Criar.
-            </p>
+            <div className="rounded-2xl border border-slate-200/80 bg-white p-12 text-center shadow-sm">
+              <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-slate-100">
+                <svg className="h-7 w-7 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+              <h2 className="text-lg font-semibold text-slate-800">Nenhuma criação ainda</h2>
+              <p className="mt-1 text-sm text-slate-500">
+                Envie uma foto de um cômodo e receba uma versão moderna com lista de móveis.
+              </p>
+              <Link
+                href="/criar"
+                className="mt-6 inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-6 py-3 text-sm font-medium text-white shadow-sm transition hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              >
+                Criar primeira transformação
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+                </svg>
+              </Link>
+            </div>
           ) : (
             <ul className="grid gap-6 sm:grid-cols-1">
               {creations.map((c, i) => (
                 <li
                   key={`${c.createdAt}-${i}`}
-                  className="flex flex-col overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm sm:flex-row"
+                  className="overflow-hidden rounded-2xl border border-slate-200/80 bg-white shadow-sm transition hover:shadow-md sm:flex"
                 >
                   <button
                     type="button"
                     onClick={() => setViewerImage(c.imageBase64)}
-                    className="relative h-64 shrink-0 sm:h-72 sm:w-80 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-inset"
+                    className="relative h-64 w-full shrink-0 overflow-hidden sm:h-72 sm:w-80 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-inset"
                   >
                     <img
                       src={c.imageBase64}
                       alt={`Criação ${i + 1}`}
-                      className="h-full w-full object-cover cursor-zoom-in hover:opacity-95 transition-opacity"
+                      className="h-full w-full object-cover transition hover:scale-[1.02]"
                     />
                   </button>
-                  <div className="flex flex-1 flex-col justify-center border-t border-neutral-100 p-4 sm:border-t-0 sm:border-l">
-                    <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-neutral-500">
+                  <div className="flex flex-1 flex-col justify-center border-t border-slate-100 p-5 sm:border-t-0 sm:border-l sm:p-6">
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-400">
                       Móveis e itens
                     </h3>
                     {c.items?.length ? (
-                      <ul className="space-y-1.5 text-neutral-700">
+                      <ul className="space-y-2 text-slate-700">
                         {c.items.map((item, j) => (
                           <li key={j} className="flex items-start gap-2 text-sm">
-                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-500" />
+                            <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-indigo-500" />
                             <span>{item}</span>
                           </li>
                         ))}
                       </ul>
                     ) : (
-                      <p className="text-sm text-neutral-400">
+                      <p className="text-sm text-slate-400">
                         Lista de itens não disponível para esta criação.
                       </p>
                     )}
@@ -268,11 +134,11 @@ export default function Home() {
             </ul>
           )}
         </section>
-      </div>
+      </main>
 
       {viewerImage && (
         <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/95 p-4"
           role="dialog"
           aria-modal="true"
           aria-label="Visualizador de imagem"
@@ -281,7 +147,7 @@ export default function Home() {
           <button
             type="button"
             onClick={() => setViewerImage(null)}
-            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2 text-white hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white"
+            className="absolute right-4 top-4 z-10 rounded-full bg-white/10 p-2.5 text-white transition hover:bg-white/20 focus:outline-none focus:ring-2 focus:ring-white"
             aria-label="Fechar"
           >
             <svg className="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -296,6 +162,6 @@ export default function Home() {
           />
         </div>
       )}
-    </main>
+    </>
   );
 }

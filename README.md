@@ -1,11 +1,12 @@
-# mobilia.ai
+# Homevia
 
 Transforme cômodos da sua casa com IA: envie uma foto e receba uma versão moderna, bonita e aconchegante gerada pela **OpenAI** (GPT Image, endpoint de edição de imagens).
 
 ## Pré-requisitos
 
 - Node.js 18+
-- Chave de API da [OpenAI](https://platform.openai.com/) com acesso ao endpoint de edição de imagens (GPT Image)
+- Chave de API da [OpenAI](https://platform.openai.com/) (edição de imagens)
+- Conta Google e credenciais OAuth para login
 
 ## Configuração
 
@@ -15,14 +16,17 @@ Transforme cômodos da sua casa com IA: envie uma foto e receba uma versão mode
    npm install
    ```
 
-2. **Configure a chave da OpenAI** (obrigatório):
+2. Crie o arquivo `.env.local` na raiz (use `.env.local.example` como base).
 
-   - Crie o arquivo `.env.local` na raiz do projeto.
-   - Adicione sua chave: `OPENAI_API_KEY=sk-...`
-   - Obtenha a chave em: [platform.openai.com/api-keys](https://platform.openai.com/api-keys)
-   - Você pode usar `.env.local.example` como referência.
+3. **Login com Google** (obrigatório):
+   - No [Google Cloud Console](https://console.cloud.google.com/apis/credentials), crie um projeto e credenciais OAuth 2.0 (tipo "Aplicativo da Web").
+   - Em "URIs de redirecionamento autorizados" adicione: `http://localhost:3000/api/auth/callback/google` (e em produção: `https://seu-dominio.com/api/auth/callback/google`).
+   - Defina no `.env.local`: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `NEXTAUTH_URL=http://localhost:3000` e `NEXTAUTH_SECRET` (gere com `openssl rand -base64 32`).
 
-Sem `OPENAI_API_KEY`, a transformação de imagens não funcionará.
+4. **OpenAI** (para transformar imagens):
+   - Adicione `OPENAI_API_KEY=sk-...` no `.env.local` ([platform.openai.com/api-keys](https://platform.openai.com/api-keys)).
+
+Sem as variáveis de Google e NEXTAUTH, o login não funcionará. Sem `OPENAI_API_KEY`, a transformação de imagens não funcionará.
 
 ## Desenvolvimento
 
@@ -34,10 +38,9 @@ Acesse [http://localhost:3000](http://localhost:3000).
 
 ## Uso
 
-1. Arraste uma imagem de um cômodo para a área de upload ou clique para selecionar um arquivo.
-2. Clique em **Criar**.
-3. A imagem será enviada para a OpenAI (GPT Image, edição) com um prompt que preserva o cômodo e altera apenas móveis e decoração.
-4. O resultado aparecerá na seção **Minhas criações**.
+1. Acesse o app; se não estiver logado, você será redirecionado para a tela de login.
+2. Entre com **Google** (único método de login).
+3. Na Home, vá em **Criar** (menu ou botão) e envie uma foto de um cômodo. A imagem será transformada pela IA e o resultado aparecerá em **Suas criações**.
 
 ## Scripts
 
